@@ -128,7 +128,7 @@
 
       <label for="displayName">Display Name</label>
       <input id="displayName" class="txt" placeholder="Your name" maxlength="32" />
-
+      <button id="saveName" class="btn">Save</button>
       <label for="themeSelector" style="margin-top:10px;">Theme Color</label>
       <div id="themeSelector" class="theme-selector">
         <button data-theme="purple" class="theme-btn">Purple</button>
@@ -375,6 +375,17 @@
     }
   });
 
+  document.getElementById('saveName').addEventListener('click', () => {
+  const displayNameInput = document.getElementById('displayName');
+  const v = displayNameInput.value.trim();
+  if (!v) return alert('Enter a name');
+  name = v;
+  localStorage.setItem(KEY_NAME, name);
+  if (socket && socket.connected) socket.emit('setName', name);
+  document.getElementById('settings').style.display = 'none';
+});
+
+
   // Online users toggle
   toggleOnlineBtn.addEventListener('click', () => {
     if(onlineListEl.style.display === 'block') onlineListEl.style.display = 'none';
@@ -425,6 +436,8 @@
     localStorage.setItem(KEY_NAME, name);
   }
   displayNameInput.value = name;
+
+
 
 </script>
 </body>
