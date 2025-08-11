@@ -124,6 +124,16 @@
       <button id="sendBtn" class="send" type="submit">Send</button>
     </form>
 
+    <div id="timeoutWarning" style="display:none; 
+  text-align:center; 
+  color:red; 
+  font-size:24px; 
+  font-weight:bold;
+  padding:10px;">
+  You are timed out and cannot send messages.
+</div>
+
+
     <div id="settings" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <h3 id="settingsTitle" style="margin-top:0;margin-bottom:12px;text-align:center;color:var(--accent)">Settings</h3>
 
@@ -144,6 +154,17 @@
       <button id="adminBtn" class="btn">Enter Admin Mode</button>
     </div>
 
+    <div id="timeoutPanel" style="display:none; margin-top:15px;">
+  <label for="timeoutUserId">User ID to Timeout</label>
+  <input id="timeoutUserId" class="txt" placeholder="Enter User ID" maxlength="64" />
+
+  <label for="timeoutMinutes" style="margin-top:8px;">Minutes</label>
+  <input id="timeoutMinutes" class="txt" type="number" min="1" value="5" />
+
+  <button id="timeoutBtn" class="btn" style="background:red;">Set Timeout</button>
+</div>
+
+
     <div id="onlineList" class="online-list" aria-live="polite" aria-label="Online users list">
       <h4>Online Users</h4>
       <ul id="onlineUsers"></ul>
@@ -160,6 +181,8 @@
   const KEY_USERID = 'chat_userid';
   const KEY_OWNER = 'chat_owner';
   const KEY_THEME = 'chat_theme';
+  const KEY_TIMEOUTS = 'chat_timeouts';
+
 
   // state
   let name = localStorage.getItem(KEY_NAME) || '';
@@ -187,6 +210,30 @@
   const onlineDot = document.querySelector('.online-dot');
 
   // Utility functions
+  function getTimeouts() {
+  try {
+    return JSON.parse(localStorage.getItem(KEY_TIMEOUTS)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveTimeouts(timeouts) {
+  localStorage.setItem(KEY_TIMEOUTS, JSON.stringify(timeouts));
+}
+
+function isUserTimedOut(id) {
+  const timeouts = getTimeouts();
+  if (!timeouts[id]) return false;
+  return Date.now() < timeouts[id];
+}
+
+function showTimeoutWarning(show) {
+  document.getElementById('timeoutWarning').style.display = show ? 'block' : 'none';
+  msgInput.disabled = show;
+  sendBtn.disabled = show;
+}
+
   function escapeHtml(s) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
@@ -294,7 +341,12 @@
 
     // Emit user info to server (roomId "main" for now)
     socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
+    
   });
+
+  if(isUserTimedOut(userId)) {
+  showTimeoutWarning(true);
+}
 
   socket.on('chatHistory', (msgs) => {
     messages = Array.isArray(msgs) ? msgs : [];
@@ -318,27 +370,36 @@
 
   // Send message helper
   function sendMessage(){
-    const text = msgInput.value.trim();
-    if(!text) return;
-    if(socket.connected){
-      socket.emit('chatMessage', text);
-    } else {
-      const now = new Date().toLocaleString();
-      const localMsg = { name, text, time: now, isOwner, userId, theme };
-      messages.push(localMsg);
-      renderMessages(messages);
-    }
-    msgInput.value = '';
-    msgInput.style.height = '';
+  // Check if the current user is timed out
+  if (isUserTimedOut(userId)) {
+    showTimeoutWarning(true); // show the big red warning
+    return; // stop them from sending
+  }
+  showTimeoutWarning(false); // hide warning if they aren't timed out
+
+  const text = msgInput.value.trim();
+  if (!text) return;
+
+  if (socket.connected) {
+    socket.emit('chatMessage', text);
+  } else {
+    const now = new Date().toLocaleString();
+    const localMsg = { name, text, time: now, isOwner, userId, theme };
+    messages.push(localMsg);
+    renderMessages(messages);
   }
 
-  sendBtn.addEventListener('click', sendMessage);
-  msgInput.addEventListener('keydown', e => {
-    if(e.key === 'Enter' && !e.shiftKey){
-      e.preventDefault();
-      sendMessage();
-    }
-  });
+  msgInput.value = '';
+  msgInput.style.height = '';
+}
+
+sendBtn.addEventListener('click', sendMessage);
+msgInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
 
   // Auto resize textarea
   msgInput.addEventListener('input', () => {
@@ -410,6 +471,7 @@
       isOwner = true;
       localStorage.setItem(KEY_OWNER, 'true');
       alert('Admin mode enabled (local)');
+      document.getElementById('timeoutPanel').style.display = 'block';
       if(socket.connected) socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
       renderMessages(messages);
       settingsEl.style.display = 'none';
@@ -417,6 +479,21 @@
       alert('Wrong code');
     }
   });
+
+  document.getElementById('timeoutBtn').addEventListener('click', () => {
+  const targetId = document.getElementById('timeoutUserId').value.trim();
+  const mins = parseInt(document.getElementById('timeoutMinutes').value, 10);
+  if(!targetId || isNaN(mins) || mins <= 0) return alert('Enter valid ID and minutes');
+
+  const until = Date.now() + mins * 60000;
+  const timeouts = getTimeouts();
+  timeouts[targetId] = until;
+  saveTimeouts(timeouts);
+
+  alert(`User ${targetId} timed out for ${mins} minutes`);
+  if(targetId === userId) showTimeoutWarning(true);
+});
+
 
   // Theme buttons logic
   themeButtons.forEach(btn => {
