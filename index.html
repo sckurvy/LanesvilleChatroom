@@ -30,7 +30,7 @@
     .avatar{width:44px;height:44px;border-radius:999px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;}
     .bubble{flex:1}
     .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-    .name{font-weight:700}
+    .displayName{font-weight:700}
     .time{font-size:12px;color:var(--muted)}
     .text{margin-top:6px;white-space:pre-wrap;color:var(--text);word-break:break-word;}
 
@@ -162,6 +162,8 @@
   <input id="timeoutMinutes" class="txt" type="number" min="1" value="5" />
 
   <button id="timeoutBtn" class="btn" style="background:red;">Set Timeout</button>
+  <button id="toggleAdminBtn" class="icon-btn" title="Toggle Admin Mode">🛠️</button>
+
 </div>
 
 
@@ -185,6 +187,7 @@
 
 
   // state
+  let adminMode = false;  // starts off disabled by default
   let name = localStorage.getItem(KEY_NAME) || '';
   let userId = localStorage.getItem(KEY_USERID) || '';
   let isOwner = localStorage.getItem(KEY_OWNER) === 'true';
@@ -192,6 +195,9 @@
   let messages = [];
   let onlineUsers = [];
   let currentRoom = "main";
+
+  userId = getUserId();
+
 
   // DOM elements
   const messagesEl = document.getElementById('messages');
@@ -274,12 +280,18 @@ function showTimeoutWarning(show) {
     }
 
     const ownerLabel = m.isOwner ? ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>' : '';
+    
+    let displayName = escapeHtml(m.displayName || 'Anonymous');
+if (adminMode) {
+  displayName += ` <span style="font-weight:600;color:#888">[${escapeHtml(m.userId || 'no-id')}]</span>`;
+}
+
 
     el.innerHTML = `
-      <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.name))}</div>
+      <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.displayName))}</div>
       <div class="bubble">
         <div class="meta">
-          <div class="name">${escapeHtml(m.name || 'Anonymous')}${ownerLabel}</div>
+          <div class="name">${escapeHtml(m.displayName || 'Anonymous')}${ownerLabel}</div>
           <div class="time">${formatTimestamp(time)}</div>
         </div>
         <div class="text">${contentHtml}</div>
@@ -288,6 +300,18 @@ function showTimeoutWarning(show) {
     messagesEl.appendChild(el);
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
+
+  const toggleAdminBtn = document.getElementById('toggleAdminBtn');
+
+toggleAdminBtn.addEventListener('click', () => {
+  adminMode = !adminMode; // toggle true/false
+
+  // Re-render all messages so user IDs appear or disappear
+  renderMessages(messages);
+
+  alert('Admin mode ' + (adminMode ? 'enabled' : 'disabled'));
+});
+
 
   // Render all messages
   function renderMessages(arr){
@@ -306,7 +330,7 @@ function showTimeoutWarning(show) {
     onlineDot.style.visibility = 'visible';
     arr.forEach(u => {
       const li = document.createElement('li');
-      li.textContent = u.name || 'Anonymous';
+      li.textContent = u.displayName || 'Anonymous';
       if (u.isOwner) li.classList.add('owner');
       onlineUsersUl.appendChild(li);
     });
@@ -380,14 +404,14 @@ function showTimeoutWarning(show) {
   const text = msgInput.value.trim();
   if (!text) return;
 
-  if (socket.connected) {
-    socket.emit('chatMessage', text);
+if (socket.connected) {
+  socket.emit('chatMessage', { text, userId });
   } else {
-    const now = new Date().toLocaleString();
-    const localMsg = { name, text, time: now, isOwner, userId, theme };
-    messages.push(localMsg);
-    renderMessages(messages);
-  }
+  const now = new Date().toLocaleString();
+  const localMsg = { name, text, time: now, isOwner, userId, theme };
+  messages.push(localMsg);
+  renderMessages(messages);
+}
 
   msgInput.value = '';
   msgInput.style.height = '';
