@@ -1,4 +1,4 @@
- <!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -105,7 +105,7 @@
     // ---- helpers ----
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function initialsFor(n){ const parts = (n||'User').split(/\s+/).filter(Boolean); return (parts[0][0] + (parts[1]?parts[1][0]:'')).toUpperCase(); }
-    function formatTimestamp(raw){ if(!raw) return ''; const d = new Date(raw); if(!isNaN(d.getTime())){ const opt={month:'short',day:'numeric',year:'numeric'}; const datePart = d.toLocaleDateString(undefined,opt); let hours = d.getHours(); const minutes = String(d.getMinutes()).padStart(2,'0'); const ampm = hours>=12?'PM':'AM'; hours = hours%12||12; return ${datePart} • ${hours}:${minutes} ${ampm} } return String(raw); }
+    function formatTimestamp(raw){ if(!raw) return ''; const d = new Date(raw); if(!isNaN(d.getTime())){ const opt={month:'short',day:'numeric',year:'numeric'}; const datePart = d.toLocaleDateString(undefined,opt); let hours = d.getHours(); const minutes = String(d.getMinutes()).padStart(2,'0'); const ampm = hours>=12?'PM':'AM'; hours = hours%12||12; return `${datePart} • ${hours}:${minutes} ${ampm}` } return String(raw); }
 
     function appendMessage(m){
       const text = m.text ?? m.message ?? m.msg ?? '';
@@ -117,7 +117,7 @@
       if (typeof text === 'string' && text.startsWith('::IMG::')){
         const data = text.slice(7);
         // allow the image (do not escape data URI)
-        contentHtml = <img src="${escapeHtml(data)}" style="max-width:360px;border-radius:8px;display:block;margin-top:6px">;
+        contentHtml = `<img src="${escapeHtml(data)}" style="max-width:360px;border-radius:8px;display:block;margin-top:6px">`;
       } else {
         contentHtml = escapeHtml(text).replace(/\n/g,'<br>');
       }
@@ -125,13 +125,13 @@
       // owner label: local-only marker for messages from the local owner
       const ownerLabel = (isOwner && m.name === name) ? ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>' : '';
 
-      el.innerHTML = 
+      el.innerHTML = `
         <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.name))}</div>
         <div class="bubble">
           <div class="meta"><div class="name">${escapeHtml(m.name || 'Anonymous')}${ownerLabel}</div><div class="time">${formatTimestamp(time)}</div></div>
           <div class="text">${contentHtml}</div>
         </div>
-      ;
+      `;
       messagesEl.appendChild(el);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
