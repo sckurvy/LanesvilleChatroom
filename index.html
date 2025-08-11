@@ -10,48 +10,103 @@
       --bg:#ffffff; --panel:#f4f4f4; --muted:#555; --text:#000000; --accent:#9b59b6;
     }
     [data-theme="dark"]{ --bg:#2c2c34; --panel:#1e1e24; --muted:#aaa; --text:#ffffff; --accent:#9b59b6; }
+    [data-theme="purple"]{ --bg:#faf5ff; --panel:#e6dbff; --muted:#666; --text:#000; --accent:#9b59b6; }
 
     *{box-sizing:border-box}
     html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
     body{background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center}
 
-    .app{width:100%;height:100%;display:grid;grid-template-rows:64px 1fr 96px;background:var(--panel)}
+    .app{width:100%;height:100%;display:grid;grid-template-rows:64px 1fr 96px;background:var(--panel);position:relative;}
 
     header{display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid rgba(0,0,0,0.1)}
-    .title{display:flex;align-items:center;gap:12px;font-weight:bold;font-size:20px}
+    .title{display:flex;align-items:center;gap:12px;font-weight:bold;font-size:20px;flex-grow:1;user-select:none;}
     /* dot is hidden until server says who's online */
-    .online-dot{width:10px;height:10px;background:#00ff00;border-radius:50%;box-shadow:0 0 8px #00ff00;margin-left:8px;visibility:hidden}
+    .online-dot{width:10px;height:10px;background:#00ff00;border-radius:50%;box-shadow:0 0 8px #00ff00;margin-left:8px;visibility:hidden;flex-shrink:0}
 
-    .controls{display:flex;gap:10px;align-items:center}
-    .icon-btn{width:40px;height:40px;border-radius:10px;border:0;background:transparent;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .controls{display:flex;gap:10px;align-items:center;flex-shrink:0}
+    .icon-btn{width:40px;height:40px;border-radius:10px;border:0;background:transparent;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center; font-size:20px; user-select:none;}
+
+    /* New group chat plus button top-left */
+    #groupChatBtn {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: white;
+      border: 1.5px solid black;
+      color: black;
+      font-size: 28px;
+      line-height: 32px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 6px var(--accent);
+      transition: background-color 0.2s;
+      z-index: 10;
+    }
+    #groupChatBtn:hover {
+      background-color: var(--accent);
+      color: white;
+      box-shadow: 0 0 10px var(--accent);
+    }
+    #groupChatBtn[title] {
+      position: absolute;
+    }
 
     .messages{padding:16px;overflow:auto}
     .msg{display:flex;gap:12px;padding:8px;border-radius:8px;margin-bottom:6px;background:rgba(0,0,0,0.03)}
-    .avatar{width:44px;height:44px;border-radius:999px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    .avatar{width:44px;height:44px;border-radius:999px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;}
     .bubble{flex:1}
-    .meta{display:flex;align-items:center;gap:10px}
+    .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
     .name{font-weight:700}
-    .time{font-size:12px;color:var(--muted)}
+    .owner-tag {
+      font-weight: 700;
+      color: #FFD700; /* bright yellow */
+      text-shadow: 0 0 3px #FFD700;
+      margin-left: 6px;
+      user-select:none;
+    }
+    .time{font-size:12px;color:var(--muted);user-select:none;}
     .text{margin-top:6px;white-space:pre-wrap;color:var(--text)}
 
     .composer{padding:14px;border-top:1px solid rgba(0,0,0,0.1);display:flex;gap:12px;align-items:center}
-    .input{flex:1;min-height:56px;border-radius:16px;padding:12px 14px;border:1px solid rgba(0,0,0,0.1);outline:none;resize:none;background:#fff;color:#000}
+    .input{flex:1;min-height:56px;border-radius:16px;padding:12px 14px;border:1px solid rgba(0,0,0,0.1);outline:none;resize:none;background:#fff;color:#000; font-size: 15px;}
     .send{background:var(--accent);border:0;padding:12px 16px;border-radius:12px;color:white;font-weight:600;cursor:pointer}
     .send:disabled{opacity:0.5;cursor:not-allowed}
     .img-btn{width:44px;height:44px;border-radius:50%;background:white;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;color:black;cursor:pointer}
 
-    .settings-panel{position:absolute;top:74px;right:18px;background:var(--panel);padding:14px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);min-width:240px;display:none}
+    .settings-panel{
+      position:absolute;top:74px;right:18px;background:var(--panel);padding:14px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);min-width:260px;display:none;z-index:10;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
     .settings-panel label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
     .txt{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.1);background:#fff;color:#000}
     .btn{padding:10px 12px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer;margin-top:8px}
+
+    .settings-panel select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: #fff;
+      color: #000;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
 
     /* small responsive tweaks */
     @media (max-width:640px){ .app{grid-template-rows:56px 1fr 84px} }
 
   </style>
 </head>
-<body data-theme="light">
-  <div class="app">
+<body data-theme="purple">
+  <div class="app" role="main" aria-label="Chat application">
+    <button id="groupChatBtn" title="Group Chat">+</button>
     <header>
       <div class="title">Lanesville Chat<div class="online-dot" title="Online"></div></div>
       <div class="controls">
@@ -59,18 +114,27 @@
       </div>
     </header>
 
-    <main class="messages" id="messages" aria-live="polite"></main>
+    <main class="messages" id="messages" aria-live="polite" aria-relevant="additions"></main>
 
     <form id="composer" class="composer" onsubmit="return false;">
-      <textarea id="msgInput" class="input" placeholder="Type a message... (Enter to send, Shift+Enter for newline)"></textarea>
-      <button type="button" id="imgBtn" class="img-btn" title="Send Image">+</button>
-      <button id="sendBtn" class="send" type="submit">Send</button>
+      <textarea id="msgInput" class="input" placeholder="Type a message... (Enter to send, Shift+Enter for newline)" aria-label="Message input"></textarea>
+      <button type="button" id="imgBtn" class="img-btn" title="Send Image" aria-label="Send Image">+</button>
+      <button id="sendBtn" class="send" type="submit" aria-label="Send message">Send</button>
     </form>
 
-    <div id="settings" class="settings-panel">
-      <label>Display Name</label>
-      <input id="displayName" class="txt" placeholder="Your name" />
+    <div id="settings" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle" style="margin-top:0; margin-bottom:12px; font-size:18px; font-weight:bold;">Settings</h2>
+      <label for="displayName">Display Name</label>
+      <input id="displayName" class="txt" placeholder="Your name" aria-describedby="userIdDesc"/>
+      <small id="userIdDesc" style="font-size:12px; color: var(--muted); margin-bottom: 10px; display:block;">User ID: <span id="userIdDisplay"></span></small>
       <button id="saveName" class="btn">Save</button>
+
+      <label for="themeSelect" style="margin-top:10px;">Theme</label>
+      <select id="themeSelect" aria-label="Select theme">
+        <option value="purple">Purple</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
 
       <label style="margin-top:10px">Admin Panel Code</label>
       <input id="adminCode" class="txt" placeholder="Enter code" />
@@ -88,10 +152,15 @@
     // ---- local keys ----
     const KEY_NAME = 'chat_name';
     const KEY_OWNER = 'chat_owner';
+    const KEY_THEME = 'chat_theme';
+    const KEY_USERID = 'chat_userid';
 
     // ---- state ----
     let name = localStorage.getItem(KEY_NAME) || '';
     let isOwner = localStorage.getItem(KEY_OWNER) === 'true';
+    let theme = localStorage.getItem(KEY_THEME) || 'purple';
+    let userId = localStorage.getItem(KEY_USERID) || '';
+
     let messages = [];
     let onlineSet = new Set();
 
@@ -101,11 +170,40 @@
     const sendBtn = document.getElementById('sendBtn');
     const imgBtn = document.getElementById('imgBtn');
     const imgInput = document.getElementById('imgInput');
+    const settingsEl = document.getElementById('settings');
+    const displayNameInput = document.getElementById('displayName');
+    const userIdDisplay = document.getElementById('userIdDisplay');
+    const themeSelect = document.getElementById('themeSelect');
 
     // ---- helpers ----
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function initialsFor(n){ const parts = (n||'User').split(/\s+/).filter(Boolean); return (parts[0][0] + (parts[1]?parts[1][0]:'')).toUpperCase(); }
-    function formatTimestamp(raw){ if(!raw) return ''; const d = new Date(raw); if(!isNaN(d.getTime())){ const opt={month:'short',day:'numeric',year:'numeric'}; const datePart = d.toLocaleDateString(undefined,opt); let hours = d.getHours(); const minutes = String(d.getMinutes()).padStart(2,'0'); const ampm = hours>=12?'PM':'AM'; hours = hours%12||12; return `${datePart} • ${hours}:${minutes} ${ampm}` } return String(raw); }
+    function initialsFor(n){ 
+      const parts = (n||'User').split(/\s+/).filter(Boolean); 
+      return (parts[0][0] + (parts[1]?parts[1][0]:'')).toUpperCase(); 
+    }
+    function formatTimestamp(raw){ 
+      if(!raw) return ''; 
+      const d = new Date(raw); 
+      if(!isNaN(d.getTime())){
+        const opt={month:'short',day:'numeric',year:'numeric'}; 
+        const datePart = d.toLocaleDateString(undefined,opt); 
+        let hours = d.getHours(); 
+        const minutes = String(d.getMinutes()).padStart(2,'0'); 
+        const ampm = hours>=12?'PM':'AM'; 
+        hours = hours%12||12; 
+        return `${datePart} • ${hours}:${minutes} ${ampm}` 
+      } 
+      return String(raw); 
+    }
+
+    // Generates a random user ID: 3 uppercase letters + 2 digits
+    function generateUserId(){
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let id = '';
+      for(let i=0;i<3;i++) id += letters.charAt(Math.floor(Math.random()*letters.length));
+      for(let i=0;i<2;i++) id += Math.floor(Math.random()*10);
+      return id;
+    }
 
     function appendMessage(m){
       const text = m.text ?? m.message ?? m.msg ?? '';
@@ -116,14 +214,13 @@
       let contentHtml = '';
       if (typeof text === 'string' && text.startsWith('::IMG::')){
         const data = text.slice(7);
-        // allow the image (do not escape data URI)
         contentHtml = `<img src="${escapeHtml(data)}" style="max-width:360px;border-radius:8px;display:block;margin-top:6px">`;
       } else {
         contentHtml = escapeHtml(text).replace(/\n/g,'<br>');
       }
 
-      // owner label: local-only marker for messages from the local owner
-      const ownerLabel = (isOwner && m.name === name) ? ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>' : '';
+      // owner label: visible to everyone in bright yellow
+      const ownerLabel = m.owner ? ' <span class="owner-tag">(Owner)</span>' : '';
 
       el.innerHTML = `
         <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.name))}</div>
@@ -147,12 +244,18 @@
     if (socket){
       socket.on('connect', ()=>{
         console.log('socket connected');
-        if (!name){ name = prompt('Enter display name') || 'Anonymous'; localStorage.setItem(KEY_NAME, name); document.getElementById('displayName').value = name; }
-        socket.emit('setName', name);
+        if (!name){ name = prompt('Enter display name') || 'Anonymous'; localStorage.setItem(KEY_NAME, name); }
+        if (!userId){
+          userId = generateUserId();
+          localStorage.setItem(KEY_USERID, userId);
+        }
+        displayNameInput.value = name;
+        userIdDisplay.textContent = userId;
+        socket.emit('setName', { name, userId });
+        socket.emit('joinGroup', currentGroup); // Join default group or main chat
       });
 
       socket.on('chatHistory', (msgs)=>{
-        // server should send an array of messages
         messages = Array.isArray(msgs) ? msgs : [];
         renderMessages(messages);
       });
@@ -164,9 +267,7 @@
 
       socket.on('onlineUsers', (users)=>{
         onlineSet = new Set(Array.isArray(users) ? users : []);
-        // show dot when at least one user connected (includes you)
         document.querySelector('.online-dot').style.visibility = onlineSet.size ? 'visible' : 'hidden';
-        // re-render so local owner labels are in correct spot (optional)
         renderMessages(messages);
       });
 
@@ -181,11 +282,10 @@
       const text = msgInput.value.trim();
       if (!text) return;
       if (socket && socket.connected){
-        socket.emit('chatMessage', text);
+        socket.emit('chatMessage', { text, group: currentGroup });
       } else {
-        // offline fallback: store locally and show immediately
         const now = new Date().toLocaleString();
-        const localMsg = { name: name || 'Anonymous', text, time: now };
+        const localMsg = { name: name || 'Anonymous', text, time: now, owner: isOwner };
         messages.push(localMsg); renderMessages(messages);
       }
       msgInput.value = '';
@@ -193,10 +293,17 @@
     }
 
     sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+    msgInput.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendMessage();
+      }
+    });
 
-    // auto-resize textarea
-    msgInput.addEventListener('input', ()=>{ msgInput.style.height = 'auto'; msgInput.style.height = msgInput.scrollHeight + 'px'; });
+    msgInput.addEventListener('input', ()=>{
+      msgInput.style.height = 'auto';
+      msgInput.style.height = msgInput.scrollHeight + 'px';
+    });
 
     // ---- images ----
     imgBtn.addEventListener('click', ()=> imgInput.click());
@@ -205,11 +312,12 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = ()=>{
-        const dataUrl = reader.result; // base64 data URL
-        // send as special marker; server will store and broadcast the string
-        if (socket && socket.connected) socket.emit('chatMessage', '::IMG::' + dataUrl);
+        const dataUrl = reader.result;
+        if (socket && socket.connected) socket.emit('chatMessage', { text: '::IMG::' + dataUrl, group: currentGroup });
         else {
-          const now = new Date().toLocaleString(); messages.push({ name: name||'Anonymous', text: '::IMG::'+dataUrl, time: now }); renderMessages(messages);
+          const now = new Date().toLocaleString();
+          messages.push({ name: name||'Anonymous', text: '::IMG::'+dataUrl, time: now, owner: isOwner });
+          renderMessages(messages);
         }
       };
       reader.readAsDataURL(file);
@@ -218,34 +326,143 @@
 
     // ---- settings UI ----
     document.getElementById('settingsBtn').addEventListener('click', ()=>{
-      const s = document.getElementById('settings');
-      s.style.display = s.style.display === 'none' || s.style.display === '' ? 'block' : 'none';
-      document.getElementById('displayName').value = name;
+      settingsEl.style.display = (settingsEl.style.display === 'none' || settingsEl.style.display === '') ? 'block' : 'none';
+      displayNameInput.value = name;
+      userIdDisplay.textContent = userId;
+      themeSelect.value = theme;
     });
 
     document.getElementById('saveName').addEventListener('click', ()=>{
-      const v = document.getElementById('displayName').value.trim();
+      const v = displayNameInput.value.trim();
       if (!v) return alert('Enter a name');
-      name = v; localStorage.setItem(KEY_NAME, name);
-      if (socket && socket.connected) socket.emit('setName', name);
-      document.getElementById('settings').style.display = 'none';
+      name = v;
+      localStorage.setItem(KEY_NAME, name);
+      if (socket && socket.connected) socket.emit('setName', { name, userId });
+      settingsEl.style.display = 'none';
+      renderMessages(messages);
     });
 
     document.getElementById('adminBtn').addEventListener('click', ()=>{
       const code = document.getElementById('adminCode').value;
       if (code === 'JohnTheJohnGuy'){
-        isOwner = true; localStorage.setItem(KEY_OWNER, 'true'); alert('Admin mode enabled (local)');
-        renderMessages(messages);
-      } else alert('Wrong code');
+       
+<script>
+  // continue from adminBtn listener...
+  document.getElementById('adminBtn').addEventListener('click', () => {
+    const code = document.getElementById('adminCode').value;
+    if (code === 'JohnTheJohnGuy') {
+      isOwner = true;
+      localStorage.setItem(KEY_OWNER, 'true');
+      alert('Admin mode enabled (local)');
+      renderMessages(messages);
+      settingsEl.style.display = 'none';
+    } else {
+      alert('Wrong code');
+    }
+  });
+
+  // theme selector
+  themeSelect.addEventListener('change', () => {
+    theme = themeSelect.value;
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem(KEY_THEME, theme);
+  });
+
+  // apply stored theme on load
+  document.body.setAttribute('data-theme', theme);
+
+  // Generate userId if missing and show it
+  if (!userId) {
+    userId = generateUserId();
+    localStorage.setItem(KEY_USERID, userId);
+  }
+  userIdDisplay.textContent = userId;
+
+  // Prompt for name if missing
+  if (!name) {
+    name = prompt('Enter display name') || 'Anonymous';
+    localStorage.setItem(KEY_NAME, name);
+  }
+  displayNameInput.value = name;
+
+  // Current group chat name or ID
+  let currentGroup = 'main'; // default group
+
+  // Group Chat button behavior
+  const groupChatBtn = document.getElementById('groupChatBtn');
+  groupChatBtn.addEventListener('click', () => {
+    const groupId = prompt('Enter User ID of the person to add to your group chat:\n(Leave blank to join main chat)');
+    if (groupId && typeof groupId === 'string') {
+      // For demo: We'll just treat the entered ID as group name
+      currentGroup = groupId.trim().toUpperCase() || 'main';
+      alert(`Joined group chat: ${currentGroup}`);
+      if (socket && socket.connected) {
+        socket.emit('joinGroup', currentGroup);
+        socket.emit('chatHistoryRequest', currentGroup);
+      }
+      messages = [];
+      messagesEl.innerHTML = '';
+    } else if (!groupId) {
+      currentGroup = 'main';
+      alert('Joined main chat');
+      if (socket && socket.connected) {
+        socket.emit('joinGroup', currentGroup);
+        socket.emit('chatHistoryRequest', currentGroup);
+      }
+      messages = [];
+      messagesEl.innerHTML = '';
+    }
+  });
+
+  // Send message with group info
+  function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    if (socket && socket.connected) {
+      socket.emit('chatMessage', { text, group: currentGroup, owner: isOwner, name, userId });
+    } else {
+      const now = new Date().toLocaleString();
+      const localMsg = { name: name || 'Anonymous', text, time: now, owner: isOwner };
+      messages.push(localMsg);
+      renderMessages(messages);
+    }
+    msgInput.value = '';
+    msgInput.style.height = '';
+  }
+
+  // Override old listener to new sendMessage()
+  sendBtn.removeEventListener('click', sendMessage);
+  sendBtn.addEventListener('click', sendMessage);
+
+  // Also attach to Enter key in textarea
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // When socket connects, send initial data & join group
+  if (socket) {
+    socket.on('connect', () => {
+      socket.emit('setName', { name, userId });
+      socket.emit('joinGroup', currentGroup);
     });
 
-    // initial prompt for name if missing
-    if (!name){ name = prompt('Enter display name') || 'Anonymous'; localStorage.setItem(KEY_NAME, name); }
-    document.getElementById('displayName').value = name;
+    // Receive messages including group info
+    socket.on('chatMessage', (msg) => {
+      // Only append messages for current group
+      if (!msg.group || msg.group === currentGroup) {
+        messages.push(msg);
+        appendMessage(msg);
+      }
+    });
 
-    // request initial history if socket is ready
-    // if server already sent chatHistory via socket.on, it will render; otherwise keep waiting
-
-  </script>
-</body>
-</html>
+    socket.on('chatHistory', (msgs) => {
+      if (Array.isArray(msgs)) {
+        messages = msgs.filter(m => !m.group || m.group === currentGroup);
+        renderMessages(messages);
+      }
+    });
+  }
+</script>
