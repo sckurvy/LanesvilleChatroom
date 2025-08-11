@@ -1,195 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Lanesville Chat</title>
-<style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: white;
-    color: black;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-  }
-  header {
-    background-color: purple;
-    color: white;
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-  }
-  #settings {
-    cursor: pointer;
-    font-size: 18px;
-  }
-  #chat {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-  }
-  .message {
-    margin-bottom: 10px;
-    padding: 5px;
-    border-radius: 5px;
-    background: #f2f2f2;
-  }
-  .name {
-    font-weight: bold;
-  }
-  .online-dot {
-    height: 8px;
-    width: 8px;
-    background-color: limegreen;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 5px;
-  }
-  #input-area {
-    display: flex;
-    padding: 10px;
-    border-top: 1px solid #ccc;
-    background-color: white;
-  }
-  #message-input {
-    flex: 1;
-    padding: 10px;
-    border-radius: 20px;
-    border: 1px solid #ccc;
-    outline: none;
-    font-size: 14px;
-  }
-  #send-btn, #img-btn {
-    margin-left: 10px;
-    border: none;
-    border-radius: 50%;
-    padding: 10px;
-    cursor: pointer;
-  }
-  #img-btn {
-    background: white;
-    border: 1px solid black;
-    font-size: 16px;
-    font-weight: bold;
-  }
-  #send-btn {
-    background-color: purple;
-    color: white;
-  }
-  #settings-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 20px;
-    border: 1px solid #ccc;
-    display: none;
-    z-index: 1000;
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lanesville Chat</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    :root{
+      --bg:#ffffff; --panel:#f4f4f4; --muted:#555; --text:#000000; --accent:#9b59b6;
+    }
+    [data-theme="dark"]{ --bg:#2c2c34; --panel:#1e1e24; --muted:#aaa; --text:#ffffff; --accent:#9b59b6; }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
+    body{background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center}
+
+    .app{width:100%;height:100%;display:grid;grid-template-rows:64px 1fr 96px;background:var(--panel)}
+
+    header{display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid rgba(0,0,0,0.1)}
+    .title{display:flex;align-items:center;gap:12px;font-weight:bold;font-size:20px}
+    /* dot is hidden until server says who's online */
+    .online-dot{width:10px;height:10px;background:#00ff00;border-radius:50%;box-shadow:0 0 8px #00ff00;margin-left:8px;visibility:hidden}
+
+    .controls{display:flex;gap:10px;align-items:center}
+    .icon-btn{width:40px;height:40px;border-radius:10px;border:0;background:transparent;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+
+    .messages{padding:16px;overflow:auto}
+    .msg{display:flex;gap:12px;padding:8px;border-radius:8px;margin-bottom:6px;background:rgba(0,0,0,0.03)}
+    .avatar{width:44px;height:44px;border-radius:999px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    .bubble{flex:1}
+    .meta{display:flex;align-items:center;gap:10px}
+    .name{font-weight:700}
+    .time{font-size:12px;color:var(--muted)}
+    .text{margin-top:6px;white-space:pre-wrap;color:var(--text)}
+
+    .composer{padding:14px;border-top:1px solid rgba(0,0,0,0.1);display:flex;gap:12px;align-items:center}
+    .input{flex:1;min-height:56px;border-radius:16px;padding:12px 14px;border:1px solid rgba(0,0,0,0.1);outline:none;resize:none;background:#fff;color:#000}
+    .send{background:var(--accent);border:0;padding:12px 16px;border-radius:12px;color:white;font-weight:600;cursor:pointer}
+    .send:disabled{opacity:0.5;cursor:not-allowed}
+    .img-btn{width:44px;height:44px;border-radius:50%;background:white;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;color:black;cursor:pointer}
+
+    .settings-panel{position:absolute;top:74px;right:18px;background:var(--panel);padding:14px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);min-width:240px;display:none}
+    .settings-panel label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    .txt{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.1);background:#fff;color:#000}
+    .btn{padding:10px 12px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer;margin-top:8px}
+
+    /* small responsive tweaks */
+    @media (max-width:640px){ .app{grid-template-rows:56px 1fr 84px} }
+
+  </style>
 </head>
-<body>
+<body data-theme="light">
+  <div class="app">
+    <header>
+      <div class="title">Lanesville Chat<div class="online-dot" title="Online"></div></div>
+      <div class="controls">
+        <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+      </div>
+    </header>
 
-<header>
-  <span>Lanesville Chat</span>
-  <span id="settings">⚙️</span>
-</header>
+    <main class="messages" id="messages" aria-live="polite"></main>
 
-<div id="chat"></div>
+    <form id="composer" class="composer" onsubmit="return false;">
+      <textarea id="msgInput" class="input" placeholder="Type a message... (Enter to send, Shift+Enter for newline)"></textarea>
+      <button type="button" id="imgBtn" class="img-btn" title="Send Image">+</button>
+      <button id="sendBtn" class="send" type="submit">Send</button>
+    </form>
 
-<div id="input-area">
-  <input id="message-input" type="text" placeholder="Type a message..." />
-  <button id="img-btn">+</button>
-  <button id="send-btn">Send</button>
-</div>
+    <div id="settings" class="settings-panel">
+      <label>Display Name</label>
+      <input id="displayName" class="txt" placeholder="Your name" />
+      <button id="saveName" class="btn">Save</button>
 
-<div id="settings-modal">
-  <h3>Settings</h3>
-  <label>Name: <input type="text" id="name-input" /></label><br><br>
-  <label>Theme: 
-    <select id="theme-select">
-      <option value="purplewhite">Purple/White</option>
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-    </select>
-  </label><br><br>
-  <label>Admin Panel Code: <input type="text" id="admin-code" /></label><br><br>
-  <button id="save-settings">Save</button>
-</div>
+      <label style="margin-top:10px">Admin Panel Code</label>
+      <input id="adminCode" class="txt" placeholder="Enter code" />
+      <button id="adminBtn" class="btn">Enter</button>
+    </div>
+  </div>
 
-<script>
-const API = "https://lanesville-chat-backend.onrender.com";
-let username = localStorage.getItem("chatName") || "";
-let theme = localStorage.getItem("chatTheme") || "purplewhite";
-let isAdmin = localStorage.getItem("isAdmin") === "true";
+  <!-- hidden file input for images -->
+  <input id="imgInput" type="file" accept="image/*" style="display:none" />
 
-// Prompt for name if not set
-if (!username) {
-  username = prompt("Enter your name:") || "Guest";
-  localStorage.setItem("chatName", username);
-}
-document.getElementById("name-input").value = username;
-document.getElementById("theme-select").value = theme;
+  <script>
+    // ---- config ----
+    const SOCKET_URL = 'https://lanesville-chat-backend.onrender.com';
 
-// Fetch and display messages
-async function loadMessages() {
-  let res = await fetch(API + "/messages");
-  let msgs = await res.json();
-  let chat = document.getElementById("chat");
-  chat.innerHTML = "";
-  msgs.forEach(msg => {
-    let div = document.createElement("div");
-    div.className = "message";
-    let date = new Date(msg.time);
-    let timeStr = date.toLocaleDateString() + " " + date.toLocaleTimeString();
-    div.innerHTML = `<span class="name"><span class="online-dot"></span>${msg.name}</span> <small>${timeStr}</small><br>${msg.message}`;
-    chat.appendChild(div);
-  });
-  chat.scrollTop = chat.scrollHeight;
-}
+    // ---- local keys ----
+    const KEY_NAME = 'chat_name';
+    const KEY_OWNER = 'chat_owner';
 
-// Send message
-async function sendMessage() {
-  let input = document.getElementById("message-input");
-  let text = input.value.trim();
-  if (!text) return;
-  await fetch(API + "/messages", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ name: username, message: text })
-  });
-  input.value = "";
-  loadMessages();
-}
+    // ---- state ----
+    let name = localStorage.getItem(KEY_NAME) || '';
+    let isOwner = localStorage.getItem(KEY_OWNER) === 'true';
+    let messages = [];
+    let onlineSet = new Set();
 
-// Load messages every 2 seconds
-setInterval(loadMessages, 2000);
-loadMessages();
+    // ---- elements ----
+    const messagesEl = document.getElementById('messages');
+    const msgInput = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const imgBtn = document.getElementById('imgBtn');
+    const imgInput = document.getElementById('imgInput');
 
-document.getElementById("send-btn").onclick = sendMessage;
+    // ---- helpers ----
+    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function initialsFor(n){ const parts = (n||'User').split(/\s+/).filter(Boolean); return (parts[0][0] + (parts[1]?parts[1][0]:'')).toUpperCase(); }
+    function formatTimestamp(raw){ if(!raw) return ''; const d = new Date(raw); if(!isNaN(d.getTime())){ const opt={month:'short',day:'numeric',year:'numeric'}; const datePart = d.toLocaleDateString(undefined,opt); let hours = d.getHours(); const minutes = String(d.getMinutes()).padStart(2,'0'); const ampm = hours>=12?'PM':'AM'; hours = hours%12||12; return `${datePart} • ${hours}:${minutes} ${ampm}` } return String(raw); }
 
-// Settings modal
-document.getElementById("settings").onclick = () => {
-  document.getElementById("settings-modal").style.display = "block";
-};
-document.getElementById("save-settings").onclick = () => {
-  username = document.getElementById("name-input").value || "Guest";
-  theme = document.getElementById("theme-select").value;
-  localStorage.setItem("chatName", username);
-  localStorage.setItem("chatTheme", theme);
-  if (document.getElementById("admin-code").value === "JohnTheJohnGuy") {
-    isAdmin = true;
-    localStorage.setItem("isAdmin", "true");
-    alert("Admin mode enabled!");
-  }
-  document.getElementById("settings-modal").style.display = "none";
-  loadMessages();
-};
-</script>
+    function appendMessage(m){
+      const text = m.text ?? m.message ?? m.msg ?? '';
+      const time = m.time ?? m.timestamp ?? m.ts ?? '';
+      const el = document.createElement('div'); el.className = 'msg';
 
+      // image messages use a simple prefix marker ::IMG::dataURI
+      let contentHtml = '';
+      if (typeof text === 'string' && text.startsWith('::IMG::')){
+        const data = text.slice(7);
+        // allow the image (do not escape data URI)
+        contentHtml = `<img src="${escapeHtml(data)}" style="max-width:360px;border-radius:8px;display:block;margin-top:6px">`;
+      } else {
+        contentHtml = escapeHtml(text).replace(/\n/g,'<br>');
+      }
+
+      // owner label: local-only marker for messages from the local owner
+      const ownerLabel = (isOwner && m.name === name) ? ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>' : '';
+
+      el.innerHTML = `
+        <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.name))}</div>
+        <div class="bubble">
+          <div class="meta"><div class="name">${escapeHtml(m.name || 'Anonymous')}${ownerLabel}</div><div class="time">${formatTimestamp(time)}</div></div>
+          <div class="text">${contentHtml}</div>
+        </div>
+      `;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function renderMessages(arr){ messagesEl.innerHTML = ''; (arr||[]).forEach(appendMessage); }
+
+    // ---- socket ----
+    let socket;
+    try{
+      socket = io(SOCKET_URL, { transports:['websocket'] });
+    }catch(e){ console.warn('Socket.io failed to load or connect', e); }
+
+    if (socket){
+      socket.on('connect', ()=>{
+        console.log('socket connected');
+        if (!name){ name = prompt('Enter display name') || 'Anonymous'; localStorage.setItem(KEY_NAME, name); document.getElementById('displayName').value = name; }
+        socket.emit('setName', name);
+      });
+
+      socket.on('chatHistory', (msgs)=>{
+        // server should send an array of messages
+        messages = Array.isArray(msgs) ? msgs : [];
+        renderMessages(messages);
+      });
+
+      socket.on('chatMessage', (msg)=>{
+        messages.push(msg);
+        appendMessage(msg);
+      });
+
+      socket.on('onlineUsers', (users)=>{
+        onlineSet = new Set(Array.isArray(users) ? users : []);
+        // show dot when at least one user connected (includes you)
+        document.querySelector('.online-dot').style.visibility = onlineSet.size ? 'visible' : 'hidden';
+        // re-render so local owner labels are in correct spot (optional)
+        renderMessages(messages);
+      });
+
+      socket.on('disconnect', ()=>{
+        console.log('socket disconnected');
+        document.querySelector('.online-dot').style.visibility = 'hidden';
+      });
+    }
+
+    // ---- send message ----
+    function sendMessage(){
+      const text = msgInput.value.trim();
+      if (!text) return;
+      if (socket && socket.connected){
+        socket.emit('chatMessage', text);
+      } else {
+        // offline fallback: store locally and show immediately
+        const now = new Date().toLocaleString();
+        const localMsg = { name: name || 'Anonymous', text, time: now };
+        messages.push(localMsg); renderMessages(messages);
+      }
+      msgInput.value = '';
+      msgInput.style.height = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    msgInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+
+    // auto-resize textarea
+    msgInput.addEventListener('input', ()=>{ msgInput.style.height = 'auto'; msgInput.style.height = msgInput.scrollHeight + 'px'; });
+
+    // ---- images ----
+    imgBtn.addEventListener('click', ()=> imgInput.click());
+    imgInput.addEventListener('change', (ev)=>{
+      const file = ev.target.files && ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const dataUrl = reader.result; // base64 data URL
+        // send as special marker; server will store and broadcast the string
+        if (socket && socket.connected) socket.emit('chatMessage', '::IMG::' + dataUrl);
+        else {
+          const now = new Date().toLocaleString(); messages.push({ name: name||'Anonymous', text: '::IMG::'+dataUrl, time: now }); renderMessages(messages);
+        }
+      };
+      reader.readAsDataURL(file);
+      imgInput.value = '';
+    });
+
+    // ---- settings UI ----
+    document.getElementById('settingsBtn').addEventListener('click', ()=>{
+      const s = document.getElementById('settings');
+      s.style.display = s.style.display === 'none' || s.style.display === '' ? 'block' : 'none';
+      document.getElementById('displayName').value = name;
+    });
+
+    document.getElementById('saveName').addEventListener('click', ()=>{
+      const v = document.getElementById('displayName').value.trim();
+      if (!v) return alert('Enter a name');
+      name = v; localStorage.setItem(KEY_NAME, name);
+      if (socket && socket.connected) socket.emit('setName', name);
+      document.getElementById('settings').style.display = 'none';
+    });
+
+    document.getElementById('adminBtn').addEventListener('click', ()=>{
+      const code = document.getElementById('adminCode').value;
+      if (code === 'JohnTheJohnGuy'){
+        isOwner = true; localStorage.setItem(KEY_OWNER, 'true'); alert('Admin mode enabled (local)');
+        renderMessages(messages);
+      } else alert('Wrong code');
+    });
+
+    // initial prompt for name if missing
+    if (!name){ name = prompt('Enter display name') || 'Anonymous'; localStorage.setItem(KEY_NAME, name); }
+    document.getElementById('displayName').value = name;
+
+    // request initial history if socket is ready
+    // if server already sent chatHistory via socket.on, it will render; otherwise keep waiting
+
+  </script>
 </body>
 </html>
