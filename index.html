@@ -130,6 +130,8 @@
       <label for="displayName">Display Name</label>
       <input id="displayName" class="txt" placeholder="Your name" maxlength="32" />
       <button id="saveName" class="btn">Save</button>
+      <label for="userIdField">Your User ID</label>
+      <input id="userIdField" class="txt" readonly />\
       <label for="themeSelector" style="margin-top:10px;">Theme Color</label>
       <div id="themeSelector" class="theme-selector">
         <button data-theme="purple" class="theme-btn">Purple</button>
@@ -211,20 +213,43 @@
     return String(raw);
   }
 
-  // Render message into chat
   function appendMessage(m){
-    const text = m.text ?? m.message ?? m.msg ?? '';
-    const time = m.time ?? m.timestamp ?? m.ts ?? '';
-    const el = document.createElement('div');
-    el.className = 'msg';
+  const text = m.text ?? m.message ?? m.msg ?? '';
+  const time = m.time ?? m.timestamp ?? m.ts ?? '';
+  const el = document.createElement('div');
+  el.className = 'msg';
 
-    let contentHtml = '';
-    if (typeof text === 'string' && text.startsWith('::IMG::')){
-      const data = text.slice(7);
-      contentHtml = `<img src="${escapeHtml(data)}" style="max-width:360px;border-radius:8px;display:block;margin-top:6px">`;
-    } else {
-      contentHtml = escapeHtml(text).replace(/\n/g,'<br>');
-    }
+  let contentHtml = '';
+  if (typeof text === 'string' && text.startsWith('::IMG::')){
+    const data = text.slice(7);
+    contentHtml = `<img src="${escapeHtml(data)}" style="max-width:360px;border-radius:8px;display:block;margin-top:6px">`;
+  } else {
+    contentHtml = escapeHtml(text).replace(/\n/g,'<br>');
+  }
+
+  // build the displayed name (show userId to local admin)
+  let nameHtml = escapeHtml(m.name || 'Anonymous');
+  if (isOwner && m.userId) {
+    nameHtml += ` <span style="font-weight:600;color:var(--muted)">(${escapeHtml(m.userId)})</span>`;
+  }
+  if (m.isOwner) {
+    nameHtml += ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>';
+  }
+
+  el.innerHTML = `
+    <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.name))}</div>
+    <div class="bubble">
+      <div class="meta">
+        <div class="name">${nameHtml}</div>
+        <div class="time">${formatTimestamp(time)}</div>
+      </div>
+      <div class="text">${contentHtml}</div>
+    </div>
+  `;
+  messagesEl.appendChild(el);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
 
     const ownerLabel = m.isOwner ? ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>' : '';
 
@@ -249,21 +274,25 @@
   }
 
   // Render online users list
-  function renderOnlineUsers(arr){
-    onlineUsersUl.innerHTML = '';
-    if (!arr.length) {
-      onlineUsersUl.innerHTML = '<li>(No one online)</li>';
-      onlineDot.style.visibility = 'hidden';
-      return;
-    }
-    onlineDot.style.visibility = 'visible';
-    arr.forEach(u => {
-      const li = document.createElement('li');
-      li.textContent = u.name || 'Anonymous';
-      if (u.isOwner) li.classList.add('owner');
-      onlineUsersUl.appendChild(li);
-    });
+ function renderOnlineUsers(arr){
+  onlineUsersUl.innerHTML = '';
+  if (!arr || arr.length === 0) {
+    onlineUsersUl.innerHTML = '<li>(No one online)</li>';
+    onlineDot.style.visibility = 'hidden';
+    return;
   }
+  onlineDot.style.visibility = 'visible';
+  arr.forEach(u => {
+    const li = document.createElement('li');
+    // textContent is safe — no HTML injection risk
+    let label = u.name || 'Anonymous';
+    if (isOwner && u.userId) label += ` (${u.userId})`;
+    li.textContent = label;
+    if (u.isOwner) li.classList.add('owner');
+    onlineUsersUl.appendChild(li);
+  });
+}
+
 
   // Apply theme to body attribute
   function applyTheme(t){
@@ -271,30 +300,48 @@
     themeButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.theme === t));
   }
 
-  // Generate or retrieve stable userId
-  function getUserId(){
-    if(userId) return userId;
-    // generate UUIDv4-like (simple)
-    userId = 'u-' + ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c =>
-      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
-    localStorage.setItem(KEY_USERID, userId);
-    return userId;
+ // Generate or retrieve stable 5-character userId (A-Z,0-9)
+function getUserId(){
+  if (userId) return userId;
+
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  function make(){
+    let id = '';
+    for (let i = 0; i < 5; i++) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return id;
   }
+
+  const stored = localStorage.getItem(KEY_USERID);
+  if (stored) {
+    const cleaned = String(stored).toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if (cleaned.length >= 5) {
+      userId = cleaned.slice(0,5);
+      localStorage.setItem(KEY_USERID, userId);
+      return userId;
+    }
+  }
+
+  userId = make();
+  localStorage.setItem(KEY_USERID, userId);
+  return userId;
+}
+
 
   // Initialize socket
   const socket = io(SOCKET_URL, { transports:['websocket'] });
 
   socket.on('connect', () => {
-    if (!name) {
-      name = prompt('Enter display name') || 'Anonymous';
-      localStorage.setItem(KEY_NAME, name);
-    }
-    if(!userId) getUserId();
+  if (!name) {
+    name = prompt('Enter display name') || 'Anonymous';
+    localStorage.setItem(KEY_NAME, name);
+  }
+  if (!userId) getUserId();
 
-    // Emit user info to server (roomId "main" for now)
-    socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
-  });
+  socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
+});
+
 
   socket.on('chatHistory', (msgs) => {
     messages = Array.isArray(msgs) ? msgs : [];
@@ -366,15 +413,18 @@
   });
 
   // Settings panel toggle
-  document.getElementById('settingsBtn').addEventListener('click', () => {
-    if(settingsEl.style.display === 'block') settingsEl.style.display = 'none';
-    else {
-      settingsEl.style.display = 'block';
-      displayNameInput.value = name;
-      adminCodeInput.value = '';
-      applyTheme(theme);
-    }
-  });
+ document.getElementById('settingsBtn').addEventListener('click', () => {
+  if (settingsEl.style.display === 'block') {
+    settingsEl.style.display = 'none';
+  } else {
+    settingsEl.style.display = 'block';
+    displayNameInput.value = name;
+    // ensure we have a short id and show it
+    document.getElementById('userIdField').value = userId || getUserId();
+    adminCodeInput.value = '';
+    applyTheme(theme);
+  }
+});
 
   document.getElementById('saveName').addEventListener('click', () => {
   const displayNameInput = document.getElementById('displayName');
@@ -405,18 +455,21 @@
 
   // Admin code entry
   adminBtn.addEventListener('click', () => {
-    const code = adminCodeInput.value.trim();
-    if(code === 'JohnTheJohnGuy'){
-      isOwner = true;
-      localStorage.setItem(KEY_OWNER, 'true');
-      alert('Admin mode enabled (local)');
-      if(socket.connected) socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
-      renderMessages(messages);
-      settingsEl.style.display = 'none';
-    } else {
-      alert('Wrong code');
-    }
-  });
+  const code = adminCodeInput.value.trim();
+  if (code === 'JohnTheJohnGuy'){
+    isOwner = true;
+    localStorage.setItem(KEY_OWNER, 'true');
+    alert('Admin mode enabled (local)');
+    document.getElementById('userIdField').value = userId || getUserId();
+    if (socket.connected) socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
+    renderMessages(messages);
+    renderOnlineUsers(onlineUsers);
+    settingsEl.style.display = 'none';
+  } else {
+    alert('Wrong code');
+  }
+});
+
 
   // Theme buttons logic
   themeButtons.forEach(btn => {
