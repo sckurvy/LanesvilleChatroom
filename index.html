@@ -1,77 +1,445 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lanesville Chat</title>
+  <link rel="icon" href="https://lhs.lanesville.k12.in.us/wp-content/uploads/2024/05/cropped-Favicon-32x32.png" sizes="32x32" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    :root{
+      --bg:#ffffff; --panel:#f4f4f4; --muted:#555; --text:#000000; --accent:#9b59b6;
+    }
+    [data-theme="dark"]{ --bg:#2c2c34; --panel:#1e1e24; --muted:#aaa; --text:#ffffff; --accent:#9b59b6; }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
+    body{background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center}
 
-let messages = {}; // { roomId: [ { name, text, time, userId, isOwner, theme } ] }
-let users = {};    // { socketId: { name, userId, theme, isOwner, roomId } }
+    .app{width:100%;height:100%;display:grid;grid-template-rows:64px 1fr 96px;background:var(--panel);position:relative;}
 
-io.on('connection', socket => {
-  console.log('User connected:', socket.id);
+    header{display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid rgba(0,0,0,0.1)}
+    .title{display:flex;align-items:center;gap:12px;font-weight:bold;font-size:20px}
+    .online-dot{width:10px;height:10px;background:#00ff00;border-radius:50%;box-shadow:0 0 8px #00ff00;margin-left:8px;visibility:hidden}
 
-  socket.on('setUserInfo', ({ name, userId, theme, isOwner, roomId }) => {
-    users[socket.id] = { name, userId, theme, isOwner, roomId: roomId || "main" };
-    socket.join(users[socket.id].roomId);
+    .controls{display:flex;gap:10px;align-items:center}
+    .icon-btn{width:40px;height:40px;border-radius:10px;border:0;background:transparent;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 
-    if (!messages[users[socket.id].roomId]) {
-      messages[users[socket.id].roomId] = [];
+    .messages{padding:16px;overflow:auto}
+    .msg{display:flex;gap:12px;padding:8px;border-radius:8px;margin-bottom:6px;background:rgba(0,0,0,0.03)}
+    .avatar{width:44px;height:44px;border-radius:999px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;}
+    .bubble{flex:1}
+    .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .name{font-weight:700}
+    .time{font-size:12px;color:var(--muted)}
+    .text{margin-top:6px;white-space:pre-wrap;color:var(--text);word-break:break-word;}
+
+    .composer{padding:14px;border-top:1px solid rgba(0,0,0,0.1);display:flex;gap:12px;align-items:center}
+    .input{flex:1;min-height:56px;border-radius:16px;padding:12px 14px;border:1px solid rgba(0,0,0,0.1);outline:none;resize:none;background:#fff;color:#000}
+    .send{background:var(--accent);border:0;padding:12px 16px;border-radius:12px;color:white;font-weight:600;cursor:pointer}
+    .send:disabled{opacity:0.5;cursor:not-allowed}
+    .img-btn{width:44px;height:44px;border-radius:50%;background:white;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;color:black;cursor:pointer}
+
+    .settings-panel{position:absolute;top:74px;right:18px;background:var(--panel);padding:14px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);min-width:280px;display:none;z-index:10;}
+    .settings-panel label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    .txt{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.1);background:#fff;color:#000;margin-bottom:8px;}
+    .btn{padding:10px 12px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer;margin-top:8px;width:100%;font-weight:600}
+
+    .theme-selector{display:flex;gap:10px;margin-top:8px;justify-content:center;}
+    .theme-btn{
+      flex:1; padding:8px 0; border-radius:8px; border:1px solid var(--accent);
+      cursor:pointer; font-weight:700; text-transform:capitalize; color:var(--accent);
+      background:#fff;
+    }
+    .theme-btn.selected{
+      background:var(--accent);
+      color:#fff;
+      font-weight:900;
+      border-color:var(--accent);
     }
 
-    io.to(users[socket.id].roomId).emit('onlineUsers',
-      Object.values(users).filter(u => u.roomId === users[socket.id].roomId)
-    );
+    .online-list {
+      position: absolute;
+      top: 74px;
+      left: 18px;
+      background: var(--panel);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.1);
+      min-width: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 14px;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      user-select: none;
+      display:none;
+      z-index: 10;
+    }
+    .online-list h4 {
+      margin: 0 0 8px 0;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--accent);
+      text-align: center;
+    }
+    .online-list ul {
+      list-style: none;
+      margin: 0; padding: 0;
+    }
+    .online-list li {
+      padding: 4px 6px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      background: rgba(155, 89, 182, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .online-list li.owner {
+      background: rgba(155, 89, 182, 0.3);
+      font-weight: 700;
+    }
 
-    // Send chat history for that room
-    socket.emit('chatHistory', messages[users[socket.id].roomId]);
+    /* small responsive tweaks */
+    @media (max-width:640px){ .app{grid-template-rows:56px 1fr 84px} }
+
+  </style>
+</head>
+<body data-theme="light">
+  <div class="app">
+    <header>
+      <div class="title">Lanesville Chat by Otto<div class="online-dot" title="Online"></div></div>
+      <div class="controls">
+        <button id="toggleOnlineBtn" class="icon-btn" title="Show Online Users">👥</button>
+        <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+      </div>
+    </header>
+
+    <main class="messages" id="messages" aria-live="polite" role="log"></main>
+
+    <form id="composer" class="composer" onsubmit="return false;">
+      <textarea id="msgInput" class="input" placeholder="Type a message... (Enter to send, Shift+Enter for newline)"></textarea>
+      <button type="button" id="imgBtn" class="img-btn" title="Send Image">+</button>
+      <button id="sendBtn" class="send" type="submit">Send</button>
+    </form>
+
+    <div id="settings" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h3 id="settingsTitle" style="margin-top:0;margin-bottom:12px;text-align:center;color:var(--accent)">Settings</h3>
+
+      <label for="displayName">Display Name</label>
+      <input id="displayName" class="txt" placeholder="Your name" maxlength="32" />
+      <button id="saveName" class="btn">Save</button>
+      <label for="themeSelector" style="margin-top:10px;">Theme Color</label>
+      <div id="themeSelector" class="theme-selector">
+        <button data-theme="purple" class="theme-btn">Purple</button>
+        <button data-theme="red" class="theme-btn">Red</button>
+        <button data-theme="blue" class="theme-btn">Blue</button>
+        <button data-theme="green" class="theme-btn">Green</button>
+        <button data-theme="dark" class="theme-btn">Dark</button>
+      </div>
+
+      <label for="adminCode" style="margin-top:10px;">Admin Panel Code</label>
+      <input id="adminCode" class="txt" placeholder="Enter code" maxlength="32" />
+      <button id="adminBtn" class="btn">Enter Admin Mode</button>
+    </div>
+
+    <div id="onlineList" class="online-list" aria-live="polite" aria-label="Online users list">
+      <h4>Online Users</h4>
+      <ul id="onlineUsers"></ul>
+    </div>
+  </div>
+
+  <input id="imgInput" type="file" accept="image/*" style="display:none" />
+
+<script>
+  const SOCKET_URL = 'https://lanesville-chat-backend.onrender.com';
+
+  // localStorage keys
+  const KEY_NAME = 'chat_name';
+  const KEY_USERID = 'chat_userid';
+  const KEY_OWNER = 'chat_owner';
+  const KEY_THEME = 'chat_theme';
+
+  // state
+  let name = localStorage.getItem(KEY_NAME) || '';
+  let userId = localStorage.getItem(KEY_USERID) || '';
+  let isOwner = localStorage.getItem(KEY_OWNER) === 'true';
+  let theme = localStorage.getItem(KEY_THEME) || 'purple';
+  let messages = [];
+  let onlineUsers = [];
+  let currentRoom = "main";
+
+  // DOM elements
+  const messagesEl = document.getElementById('messages');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const imgBtn = document.getElementById('imgBtn');
+  const imgInput = document.getElementById('imgInput');
+  const settingsEl = document.getElementById('settings');
+  const displayNameInput = document.getElementById('displayName');
+  const adminCodeInput = document.getElementById('adminCode');
+  const adminBtn = document.getElementById('adminBtn');
+  const onlineListEl = document.getElementById('onlineList');
+  const onlineUsersUl = document.getElementById('onlineUsers');
+  const toggleOnlineBtn = document.getElementById('toggleOnlineBtn');
+  const themeButtons = document.querySelectorAll('.theme-btn');
+  const onlineDot = document.querySelector('.online-dot');
+
+  // Utility functions
+  function escapeHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function initialsFor(n){
+    const parts = (n||'User').split(/\s+/).filter(Boolean);
+    return (parts[0][0] + (parts[1]?parts[1][0]:'')).toUpperCase();
+  }
+
+  function formatTimestamp(raw){
+    if(!raw) return '';
+    const d = new Date(raw);
+    if(!isNaN(d.getTime())){
+      const opt = {month:'short', day:'numeric', year:'numeric'};
+      const datePart = d.toLocaleDateString(undefined,opt);
+      let hours = d.getHours();
+      const minutes = String(d.getMinutes()).padStart(2,'0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      return `${datePart} • ${hours}:${minutes} ${ampm}`;
+    }
+    return String(raw);
+  }
+
+  // Render message into chat
+  function appendMessage(m){
+    const text = m.text ?? m.message ?? m.msg ?? '';
+    const time = m.time ?? m.timestamp ?? m.ts ?? '';
+    const el = document.createElement('div');
+    el.className = 'msg';
+
+    let contentHtml = '';
+    if (typeof text === 'string' && text.startsWith('::IMG::')){
+      const data = text.slice(7);
+      contentHtml = `<img src="${escapeHtml(data)}" style="max-width:360px;border-radius:8px;display:block;margin-top:6px">`;
+    } else {
+      contentHtml = escapeHtml(text).replace(/\n/g,'<br>');
+    }
+
+    const ownerLabel = m.isOwner ? ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>' : '';
+
+    el.innerHTML = `
+      <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.name))}</div>
+      <div class="bubble">
+        <div class="meta">
+          <div class="name">${escapeHtml(m.name || 'Anonymous')}${ownerLabel}</div>
+          <div class="time">${formatTimestamp(time)}</div>
+        </div>
+        <div class="text">${contentHtml}</div>
+      </div>
+    `;
+    messagesEl.appendChild(el);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // Render all messages
+  function renderMessages(arr){
+    messagesEl.innerHTML = '';
+    (arr||[]).forEach(appendMessage);
+  }
+
+  // Render online users list
+  function renderOnlineUsers(arr){
+    onlineUsersUl.innerHTML = '';
+    if (!arr.length) {
+      onlineUsersUl.innerHTML = '<li>(No one online)</li>';
+      onlineDot.style.visibility = 'hidden';
+      return;
+    }
+    onlineDot.style.visibility = 'visible';
+    arr.forEach(u => {
+      const li = document.createElement('li');
+      li.textContent = u.name || 'Anonymous';
+      if (u.isOwner) li.classList.add('owner');
+      onlineUsersUl.appendChild(li);
+    });
+  }
+
+  // Apply theme to body attribute
+  function applyTheme(t){
+    document.body.setAttribute('data-theme', t==='dark' ? 'dark' : 'light');
+    themeButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.theme === t));
+  }
+
+  // Generate or retrieve stable userId
+  function getUserId(){
+    if(userId) return userId;
+    // generate UUIDv4-like (simple)
+    userId = 'u-' + ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+    localStorage.setItem(KEY_USERID, userId);
+    return userId;
+  }
+
+  // Initialize socket
+  const socket = io(SOCKET_URL, { transports:['websocket'] });
+
+  socket.on('connect', () => {
+    if (!name) {
+      name = prompt('Enter display name') || 'Anonymous';
+      localStorage.setItem(KEY_NAME, name);
+    }
+    if(!userId) getUserId();
+
+    // Emit user info to server (roomId "main" for now)
+    socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
   });
 
-  socket.on('chatMessage', msg => {
-    const user = users[socket.id] || {};
-    const messageData = {
-      name: user.name || 'Unknown',
-      text: msg,
-      time: new Date().toLocaleString(),
-      userId: user.userId || '',
-      isOwner: user.isOwner || false,
-      theme: user.theme || 'purple'
-    };
-
-    if (!messages[user.roomId]) messages[user.roomId] = [];
-    messages[user.roomId].push(messageData);
-
-    io.to(user.roomId).emit('chatMessage', messageData);
+  socket.on('chatHistory', (msgs) => {
+    messages = Array.isArray(msgs) ? msgs : [];
+    renderMessages(messages);
   });
 
-  socket.on('createGroup', ({ groupId, members }) => {
-    // Just join the socket to the group
-    socket.leave(users[socket.id].roomId);
-    socket.join(groupId);
-    users[socket.id].roomId = groupId;
+  socket.on('chatMessage', (msg) => {
+    messages.push(msg);
+    appendMessage(msg);
+  });
 
-    if (!messages[groupId]) messages[groupId] = [];
-    socket.emit('chatHistory', messages[groupId]);
-
-    io.to(groupId).emit('onlineUsers',
-      Object.values(users).filter(u => u.roomId === groupId)
-    );
+  socket.on('onlineUsers', (users) => {
+    onlineUsers = Array.isArray(users) ? users : [];
+    renderOnlineUsers(onlineUsers);
   });
 
   socket.on('disconnect', () => {
-    const user = users[socket.id];
-    if (user) {
-      delete users[socket.id];
-      io.to(user.roomId).emit('onlineUsers',
-        Object.values(users).filter(u => u.roomId === user.roomId)
-      );
+    onlineDot.style.visibility = 'hidden';
+    onlineUsersUl.innerHTML = '';
+  });
+
+  // Send message helper
+  function sendMessage(){
+    const text = msgInput.value.trim();
+    if(!text) return;
+    if(socket.connected){
+      socket.emit('chatMessage', text);
+    } else {
+      const now = new Date().toLocaleString();
+      const localMsg = { name, text, time: now, isOwner, userId, theme };
+      messages.push(localMsg);
+      renderMessages(messages);
+    }
+    msgInput.value = '';
+    msgInput.style.height = '';
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  msgInput.addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendMessage();
     }
   });
+
+  // Auto resize textarea
+  msgInput.addEventListener('input', () => {
+    msgInput.style.height = 'auto';
+    msgInput.style.height = msgInput.scrollHeight + 'px';
+  });
+
+  // Image sending
+  imgBtn.addEventListener('click', () => imgInput.click());
+  imgInput.addEventListener('change', ev => {
+    const file = ev.target.files && ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if(socket.connected) socket.emit('chatMessage', '::IMG::' + dataUrl);
+      else {
+        const now = new Date().toLocaleString();
+        messages.push({ name, text: '::IMG::' + dataUrl, time: now, isOwner, userId, theme });
+        renderMessages(messages);
+      }
+    };
+    reader.readAsDataURL(file);
+    imgInput.value = '';
+  });
+
+  // Settings panel toggle
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    if(settingsEl.style.display === 'block') settingsEl.style.display = 'none';
+    else {
+      settingsEl.style.display = 'block';
+      displayNameInput.value = name;
+      adminCodeInput.value = '';
+      applyTheme(theme);
+    }
+  });
+
+  document.getElementById('saveName').addEventListener('click', () => {
+  const displayNameInput = document.getElementById('displayName');
+  const v = displayNameInput.value.trim();
+  if (!v) return alert('Enter a name');
+  name = v;
+  localStorage.setItem(KEY_NAME, name);
+  if (socket && socket.connected) socket.emit('setName', name);
+  document.getElementById('settings').style.display = 'none';
 });
 
-server.listen(process.env.PORT || 3000, () => {
-  console.log('Server is running');
-});
+
+  // Online users toggle
+  toggleOnlineBtn.addEventListener('click', () => {
+    if(onlineListEl.style.display === 'block') onlineListEl.style.display = 'none';
+    else onlineListEl.style.display = 'block';
+  });
+
+  // Save display name
+  document.getElementById('saveName')?.addEventListener('click', () => {
+    const v = displayNameInput.value.trim();
+    if(!v) return alert('Enter a name');
+    name = v;
+    localStorage.setItem(KEY_NAME, name);
+    if(socket.connected) socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
+    settingsEl.style.display = 'none';
+  });
+
+  // Admin code entry
+  adminBtn.addEventListener('click', () => {
+    const code = adminCodeInput.value.trim();
+    if(code === 'JohnTheJohnGuy'){
+      isOwner = true;
+      localStorage.setItem(KEY_OWNER, 'true');
+      alert('Admin mode enabled (local)');
+      if(socket.connected) socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
+      renderMessages(messages);
+      settingsEl.style.display = 'none';
+    } else {
+      alert('Wrong code');
+    }
+  });
+
+  // Theme buttons logic
+  themeButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      theme = btn.dataset.theme;
+      localStorage.setItem(KEY_THEME, theme);
+      applyTheme(theme);
+      if(socket.connected) socket.emit('setUserInfo', { name, userId, theme, isOwner, roomId: currentRoom });
+    });
+  });
+
+  // Initial theme apply
+  applyTheme(theme);
+
+  // Prompt for name if missing
+  if(!name){
+    name = prompt('Enter display name') || 'Anonymous';
+    localStorage.setItem(KEY_NAME, name);
+  }
+  displayNameInput.value = name;
+
+
+
+</script>
+</body>
+</html>
