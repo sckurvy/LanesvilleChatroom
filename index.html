@@ -223,7 +223,7 @@
       contentHtml = escapeHtml(text).replace(/\n/g,'<br>');
     }
 
-    const ownerLabel = m.isOwner ? ' <span style="font-weight:600;color:var(--muted)">(Owner)</span>' : '';
+    const ownerLabel = m.isOwner ? ' <span style="font-weight:600;color:var(--muted)">(THE Owner)</span>' : '';
 
     el.innerHTML = `
       <div class="avatar" aria-hidden="true">${escapeHtml(initialsFor(m.name))}</div>
